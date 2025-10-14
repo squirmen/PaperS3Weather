@@ -36,6 +36,7 @@ int refreshCounter = 0;
 
 struct WeatherData {
     float temperature;
+    float apparentTemperature;
     float humidity;
     float windSpeed;
     float windDir;
@@ -50,6 +51,7 @@ struct WeatherData {
         float precip;
         float humidity;
         float pressure;
+        float uvIndex;
         int weatherCode;
     } hourly[MAX_HOURLY];
 
@@ -326,8 +328,8 @@ bool fetchWeatherData(float latitude, float longitude) {
     String url = "https://api.open-meteo.com/v1/forecast?";
     url += "latitude=" + String(latitude, 4);
     url += "&longitude=" + String(longitude, 4);
-    url += "&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,weather_code";
-    url += "&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,pressure_msl,weather_code";
+    url += "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,weather_code";
+    url += "&hourly=temperature_2m,precipitation_probability,relative_humidity_2m,pressure_msl,uv_index,weather_code";
     url += "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,relative_humidity_2m_mean,pressure_msl_mean,sunrise,sunset";
     url += useCelsius ? "&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm" :
                         "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch";
@@ -342,12 +344,21 @@ bool fetchWeatherData(float latitude, float longitude) {
         DeserializationError error = deserializeJson(doc, payload);
 
         if (!error) {
+            // Extract current conditions (timestamp-specific real-time data)
             currentWeather.temperature = doc["current"]["temperature_2m"];
+            currentWeather.apparentTemperature = doc["current"]["apparent_temperature"];
             currentWeather.humidity = doc["current"]["relative_humidity_2m"];
             currentWeather.windSpeed = doc["current"]["wind_speed_10m"];
             currentWeather.windDir = doc["current"]["wind_direction_10m"];
             currentWeather.precipitation = doc["current"]["precipitation"];
             currentWeather.weatherCode = doc["current"]["weather_code"];
+
+            Serial.println("\n=== Current Conditions from API ===");
+            Serial.printf("Temperature: %.1f\n", currentWeather.temperature);
+            Serial.printf("Feels Like: %.1f\n", currentWeather.apparentTemperature);
+            Serial.printf("Humidity: %.0f%%\n", currentWeather.humidity);
+            Serial.printf("Wind: %.1f @ %.0f°\n", currentWeather.windSpeed, currentWeather.windDir);
+            Serial.printf("Weather Code: %d\n", currentWeather.weatherCode);
 
             String sunriseStr = doc["daily"]["sunrise"][0].as<String>();
             String sunsetStr = doc["daily"]["sunset"][0].as<String>();
@@ -358,18 +369,32 @@ bool fetchWeatherData(float latitude, float longitude) {
                 currentWeather.sunsetTime = sunsetStr.substring(11, 16);
             }
 
+            // Get current hour to use as offset into API hourly arrays
+            // Open-Meteo returns hourly data starting from 00:00 of current day
+            struct tm timeinfo;
+            if (!getLocalTime(&timeinfo)) {
+                timeinfo.tm_hour = 0;
+            }
+            int currentHourOffset = timeinfo.tm_hour;
+
             JsonArray hourlyTemp = doc["hourly"]["temperature_2m"];
             JsonArray hourlyPrecip = doc["hourly"]["precipitation_probability"];
             JsonArray hourlyHumidity = doc["hourly"]["relative_humidity_2m"];
             JsonArray hourlyPressure = doc["hourly"]["pressure_msl"];
+            JsonArray hourlyUV = doc["hourly"]["uv_index"];
             JsonArray hourlyWeatherCode = doc["hourly"]["weather_code"];
 
-            for (int i = 0; i < MAX_HOURLY && i < hourlyTemp.size(); i++) {
-                currentWeather.hourly[i].temp = hourlyTemp[i];
-                currentWeather.hourly[i].precip = hourlyPrecip[i];
-                currentWeather.hourly[i].humidity = hourlyHumidity[i];
-                currentWeather.hourly[i].pressure = hourlyPressure[i];
-                currentWeather.hourly[i].weatherCode = hourlyWeatherCode[i];
+            Serial.printf("Current hour: %d, using as offset into API arrays\n", currentHourOffset);
+
+            for (int i = 0; i < MAX_HOURLY && (currentHourOffset + i) < hourlyTemp.size(); i++) {
+                int apiIndex = currentHourOffset + i;
+                currentWeather.hourly[i].temp = hourlyTemp[apiIndex];
+                currentWeather.hourly[i].precip = hourlyPrecip[apiIndex];
+                currentWeather.hourly[i].humidity = hourlyHumidity[apiIndex];
+                currentWeather.hourly[i].pressure = hourlyPressure[apiIndex];
+                currentWeather.hourly[i].uvIndex = (apiIndex < hourlyUV.size()) ? hourlyUV[apiIndex].as<float>() : 0.0f;
+                currentWeather.hourly[i].weatherCode = hourlyWeatherCode[apiIndex];
+                Serial.printf("Hour %d (API index %d) UV: %.1f\n", i, apiIndex, currentWeather.hourly[i].uvIndex);
             }
 
             JsonArray dailyMax = doc["daily"]["temperature_2m_max"];
@@ -501,8 +526,8 @@ void displayWeather() {
     canvas.drawLine(697, 35, 697, 286, TFT_BLACK);
 
     drawCurrentConditions(15, 35, 217, 251);
-    drawSunInfo(232, 35, 233, 251);
-    drawWindInfo(465, 35, 232, 251);
+    drawWindInfo(232, 35, 233, 251);
+    drawSunInfo(465, 35, 232, 251);
     drawM5PaperInfo(697, 35, 245, 251);
 
     canvas.drawRect(15, 286, SCREEN_WIDTH - 30, 122, TFT_BLACK);
@@ -514,21 +539,19 @@ void displayWeather() {
 
     canvas.drawRect(15, 408, SCREEN_WIDTH - 30, 122, TFT_BLACK);
 
-    String tempUnit = useCelsius ? "C" : "F";
-
-    float hourlyTempArray[MAX_HOURLY];
+    float hourlyUVArray[MAX_HOURLY];
     float hourlyPrecipArray[MAX_HOURLY];
     float hourlyHumidityArray[MAX_HOURLY];
     float hourlyPressureArray[MAX_HOURLY];
 
     for (int i = 0; i < MAX_HOURLY; i++) {
-        hourlyTempArray[i] = currentWeather.hourly[i].temp;
+        hourlyUVArray[i] = currentWeather.hourly[i].uvIndex;
         hourlyPrecipArray[i] = currentWeather.hourly[i].precip;
         hourlyHumidityArray[i] = currentWeather.hourly[i].humidity;
         hourlyPressureArray[i] = currentWeather.hourly[i].pressure;
     }
 
-    drawGraph(15, 408, 232, 122, "Temp (" + tempUnit + ")", 0, 7, -20, 100, hourlyTempArray);
+    drawGraph(15, 408, 232, 122, "UV Index", 0, 7, 0, 12, hourlyUVArray);
     drawGraph(247, 408, 232, 122, "Precip (%)", 0, 7, 0, 100, hourlyPrecipArray);
     drawGraph(479, 408, 232, 122, "Humidity (%)", 0, 7, 0, 100, hourlyHumidityArray);
     drawGraph(711, 408, 232, 122, "Pressure (hPa)", 0, 7, 980, 1040, hourlyPressureArray);
@@ -552,11 +575,6 @@ void drawWindCompass(int x, int y, float angle, float windspeed, int radius) {
         dxo = radius * cos((a - 90) * PI / 180);
         dyo = radius * sin((a - 90) * PI / 180);
 
-        if (a == 45)  canvas.drawString("NE", dxo + x + 15, dyo + y - 15);
-        if (a == 135) canvas.drawString("SE", dxo + x + 15, dyo + y + 5);
-        if (a == 225) canvas.drawString("SW", dxo + x - 15, dyo + y + 5);
-        if (a == 315) canvas.drawString("NW", dxo + x - 15, dyo + y - 15);
-
         dxi = dxo * 0.9;
         dyi = dyo * 0.9;
         canvas.drawLine(dxo + x, dyo + y, dxi + x, dyi + y, TFT_BLACK);
@@ -568,14 +586,24 @@ void drawWindCompass(int x, int y, float angle, float windspeed, int radius) {
         canvas.drawLine(dxo + x, dyo + y, dxi + x, dyi + y, TFT_BLACK);
     }
 
+    int labelOffset = radius + 18;
     canvas.setTextDatum(TC_DATUM);
-    canvas.drawString("N", x, y - radius - 20);
-    canvas.setTextDatum(TC_DATUM);
-    canvas.drawString("S", x, y + radius + 5);
-    canvas.setTextDatum(TC_DATUM);
-    canvas.drawString("W", x - radius - 15, y - 3);
-    canvas.setTextDatum(TC_DATUM);
-    canvas.drawString("E", x + radius + 15, y - 3);
+    canvas.drawString("N", x, y - labelOffset);
+    canvas.drawString("S", x, y + labelOffset - 8);
+
+    canvas.setTextDatum(MC_DATUM);
+    canvas.drawString("W", x - labelOffset, y);
+    canvas.drawString("E", x + labelOffset, y);
+
+    int diagOffset = (int)(labelOffset * 0.707);
+    canvas.setTextDatum(BR_DATUM);
+    canvas.drawString("NE", x + diagOffset + 10, y - diagOffset);
+    canvas.setTextDatum(TR_DATUM);
+    canvas.drawString("SE", x + diagOffset + 10, y + diagOffset);
+    canvas.setTextDatum(TL_DATUM);
+    canvas.drawString("SW", x - diagOffset - 10, y + diagOffset);
+    canvas.setTextDatum(BL_DATUM);
+    canvas.drawString("NW", x - diagOffset - 10, y - diagOffset);
 
     String speedUnit = useCelsius ? "km/h" : "mph";
     canvas.setTextDatum(TC_DATUM);
@@ -931,16 +959,20 @@ void drawCurrentConditions(int x, int y, int dx, int dy) {
     canvas.setTextDatum(TL_DATUM);
     canvas.drawLine(x, y + 35, x + dx, y + 35, TFT_BLACK);
 
+    int spacing = dx / 4;
+
     canvas.setFont(&fonts::FreeSansBold24pt7b);
     canvas.setTextSize(2);
     canvas.setTextDatum(TC_DATUM);
 
     String tempNum = String((int)currentWeather.temperature);
-    int tempY = y + 40;
-    canvas.drawString(tempNum, x + dx / 2, tempY);
+    int mainTempX = x + spacing;
+    int mainTempY = y + 50;
+    canvas.drawString(tempNum, mainTempX, mainTempY);
 
-    int degreeX = x + dx / 2 + (canvas.textWidth(tempNum) * 2) / 2 + 8 - 50;
-    int degreeY = y + 53;
+    int tempWidth = canvas.textWidth(tempNum) * 2;
+    int degreeX = mainTempX + tempWidth / 2 - 42;
+    int degreeY = mainTempY + 13;
     canvas.drawCircle(degreeX, degreeY, 8, TFT_BLACK);
     canvas.drawCircle(degreeX, degreeY, 7, TFT_BLACK);
 
@@ -954,18 +986,51 @@ void drawCurrentConditions(int x, int y, int dx, int dy) {
     }
     bool isDay = isDaytime(timeinfo.tm_hour);
 
-    int iconX = x + dx / 2 - 32;
-    int iconY = y + 120;
+    int iconX = x + dx - spacing - 25;
+    int iconY = mainTempY - 2;
     const uint8_t* weatherIcon = getWeatherIcon(currentWeather.weatherCode, isDay);
     drawIcon(iconX, iconY, weatherIcon, 64, 64, true);
 
-    canvas.setTextSize(3);
-    canvas.setTextDatum(TC_DATUM);
     String condition = getWeatherConditionText(currentWeather.weatherCode);
-    if (condition.length() > 15) {
-        condition = condition.substring(0, 14);
+    canvas.setTextDatum(TC_DATUM);
+
+    int conditionY = mainTempY + 90;
+    int availableWidth = dx - 20;
+    int textWidth = canvas.textWidth(condition) * 3;
+
+    if (textWidth > availableWidth) {
+        canvas.setTextSize(2);
+    } else {
+        canvas.setTextSize(3);
     }
-    canvas.drawString(condition, x + dx / 2, y + 185);
+    canvas.drawString(condition, x + dx / 2, conditionY);
+
+    int feelsLikeY = y + 175;
+
+    // Draw "Feels Like:" label - move left a few pixels
+    canvas.setTextSize(2);
+    canvas.setTextDatum(TL_DATUM);
+    String feelsLikeLabel = "Feels Like:";
+    int labelX = x + spacing - 35;
+    canvas.drawString(feelsLikeLabel, labelX, feelsLikeY);
+
+    // Calculate label width and position temperature further left
+    int labelWidth = canvas.textWidth(feelsLikeLabel) * 2;
+    int feelsLikeTempX = labelX + labelWidth - 130;  // Moved much further left
+
+    // Draw temperature at size 4 with same Y alignment as label
+    canvas.setTextSize(4);
+    canvas.setTextDatum(TL_DATUM);
+    String feelsTemp = String((int)currentWeather.apparentTemperature);
+    canvas.drawString(feelsTemp, feelsLikeTempX, feelsLikeY - 8);
+
+    // Position degree symbol right next to the temperature number
+    // textWidth() at size 4 already accounts for the scaling
+    int tempNumWidth = canvas.textWidth(feelsTemp);
+    int feelsLikeDegX = feelsLikeTempX + tempNumWidth + 2;  // Small gap after temp
+    int feelsLikeDegY = feelsLikeY - 3;
+    canvas.drawCircle(feelsLikeDegX, feelsLikeDegY, 5, TFT_BLACK);
+    canvas.drawCircle(feelsLikeDegX, feelsLikeDegY, 4, TFT_BLACK);
 
     canvas.setTextSize(3);
     canvas.setTextDatum(TC_DATUM);
@@ -973,7 +1038,6 @@ void drawCurrentConditions(int x, int y, int dx, int dy) {
     String lowTemp = "L:" + String((int)currentWeather.todayMinTemp);
     String highTemp = "H:" + String((int)currentWeather.todayMaxTemp);
 
-    int spacing = dx / 4;
     int tempTextY = y + 220;
 
     canvas.drawString(lowTemp, x + spacing, tempTextY);
