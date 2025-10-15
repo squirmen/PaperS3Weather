@@ -1005,18 +1005,18 @@ void drawCurrentConditions(int x, int y, int dx, int dy) {
     }
     canvas.drawString(condition, x + dx / 2, conditionY);
 
-    int feelsLikeY = y + 175;
+    int feelsLikeY = y + 185;
 
-    // Draw "Feels Like:" label - move left a few pixels
+    // Draw "Feels Like:" label
     canvas.setTextSize(2);
     canvas.setTextDatum(TL_DATUM);
     String feelsLikeLabel = "Feels Like:";
     int labelX = x + spacing - 35;
     canvas.drawString(feelsLikeLabel, labelX, feelsLikeY);
 
-    // Calculate label width and position temperature further left
+    // Calculate label width and position temperature
     int labelWidth = canvas.textWidth(feelsLikeLabel) * 2;
-    int feelsLikeTempX = labelX + labelWidth - 130;  // Moved much further left
+    int feelsLikeTempX = labelX + labelWidth - 130;
 
     // Draw temperature at size 4 with same Y alignment as label
     canvas.setTextSize(4);
@@ -1027,7 +1027,7 @@ void drawCurrentConditions(int x, int y, int dx, int dy) {
     // Position degree symbol right next to the temperature number
     // textWidth() at size 4 already accounts for the scaling
     int tempNumWidth = canvas.textWidth(feelsTemp);
-    int feelsLikeDegX = feelsLikeTempX + tempNumWidth + 2;  // Small gap after temp
+    int feelsLikeDegX = feelsLikeTempX + tempNumWidth + 3;  // Small gap after temp
     int feelsLikeDegY = feelsLikeY - 3;
     canvas.drawCircle(feelsLikeDegX, feelsLikeDegY, 5, TFT_BLACK);
     canvas.drawCircle(feelsLikeDegX, feelsLikeDegY, 4, TFT_BLACK);
