@@ -1,0 +1,46 @@
+PaperS3Weather - M5Burner Submission Info
+==========================================
+
+App Name: PaperS3Weather
+Version: 1.1
+Device: M5Paper S3
+Category: Weather / Utilities
+
+Short Description:
+Weather dashboard with Open-Meteo API - no API key required
+
+Full Description:
+Comprehensive weather station for M5Paper S3 with real-time conditions, 8-hour forecast,
+and multiple data graphs. Features city-based location with automatic geocoding,
+Celsius/Fahrenheit support, and night mode for extended battery life.
+
+Features:
+- Real-time weather with 8-hour forecast
+- City-based location (automatic coordinate lookup)
+- Temperature, precipitation, humidity, and pressure graphs
+- Celsius/Fahrenheit toggle
+- Night mode power saving (10pm-5am)
+- WiFi configuration portal
+- Free Open-Meteo API (no key required)
+- Sun/moon info and wind compass
+
+Setup Instructions:
+1. Flash firmware to M5Paper S3
+2. On first boot, connect to "M5Paper-Weather" WiFi (password: configure)
+3. Open browser to 192.168.4.1
+4. Enter your WiFi credentials and city name
+5. Save and restart - weather will display automatically
+
+GitHub: https://github.com/squirmen/PaperS3Weather
+License: MIT
+
+Files for M5Burner:
+-------------------
+- PaperS3Weather_v1.1.bin (main firmware)
+- bootloader.bin (ESP32-S3 bootloader)
+- partitions.bin (partition table)
+
+Flash Addresses:
+- bootloader.bin @ 0x0000
+- partitions.bin @ 0x8000
+- PaperS3Weather_v1.1.bin @ 0x10000
