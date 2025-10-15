@@ -18,7 +18,7 @@
 #define REFRESH_INTERVAL_NIGHT_MS 3600000
 #define NIGHT_START_HOUR 22
 #define NIGHT_END_HOUR 5
-#define VERSION "Version 1.1"
+#define VERSION "Version 1.11"
 
 // Preferences
 Preferences preferences;
