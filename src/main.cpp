@@ -198,6 +198,10 @@ void loop() {
                 delay(100);  // Small delay to reduce CPU usage
             }
 
+            // Clear countdown text before sleep
+            M5.Display.fillRect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 140, 25, TFT_WHITE);
+            M5.Display.display();
+
             M5.Display.endWrite();
             Serial.println("*** Wait period ended, entering sleep mode ***\n");
         } else {
