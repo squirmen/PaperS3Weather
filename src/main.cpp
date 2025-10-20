@@ -198,9 +198,14 @@ void loop() {
                 delay(100);  // Small delay to reduce CPU usage
             }
 
-            // Clear countdown text before sleep
-            M5.Display.fillRect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 140, 25, TFT_WHITE);
+            // Clear countdown and restore [CFG] text
+            M5.Display.fillRect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 150, 50, TFT_WHITE);
+            M5.Display.setTextSize(1);
+            M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
+            M5.Display.setCursor(SCREEN_WIDTH - 50, SCREEN_HEIGHT - 20);
+            M5.Display.print("[CFG]");
             M5.Display.display();
+            delay(500);  // Give e-ink time to fully refresh
 
             M5.Display.endWrite();
             Serial.println("*** Wait period ended, entering sleep mode ***\n");
