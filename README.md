@@ -13,14 +13,17 @@ A comprehensive weather station for the M5Paper S3 e-ink display, featuring real
 - **Current Weather Conditions**: Large, easy-to-read temperature display with weather icons and conditions
 - **8-Hour Forecast**: Hourly weather predictions with temperature and icons
 - **Multiple Data Graphs**: Temperature, precipitation, humidity, and atmospheric pressure trends
+- **User-Configurable Refresh Intervals**: Set day (5-120 min) and night (15-240 min) update frequencies via web interface
+- **Smart Wake Detection**: Config button accessible only on manual reset (saves battery)
+- **Customizable Night Mode**: Set your own night hours (0-23) for reduced refresh rate
 - **Celsius/Fahrenheit Support**: Toggle between temperature units via configuration
 - **City-Based Location**: Automatic coordinate lookup by city name
-- **WiFi Configuration Portal**: Easy setup through web interface
-- **Night Mode Power Saving**: Reduced refresh rate (10pm-5am) for extended battery life
-- **Deep Sleep Implementation**: Efficient power management between updates
+- **Modern Web Configuration**: Enhanced portal with validation and mobile-friendly design
+- **Deep Sleep Implementation**: Intelligent power management between updates
 - **Sun & Moon Information**: Sunrise/sunset times and moon phase display
 - **Wind Compass**: Real-time wind speed and direction visualization
 - **Battery & WiFi Status**: Always-visible system information
+- **Modular Architecture**: Clean, maintainable code structure (v1.12)
 
 ## Hardware Requirements
 
@@ -144,15 +147,22 @@ pio device monitor
 
 ### WiFi Configuration Portal
 
-Access the configuration portal when:
+**How to Access (v1.12+)**:
+1. **Press the reset button** on your M5Paper S3 device
+2. Device wakes and displays weather
+3. **Within 30 seconds**, tap the **[CFG]** button in the bottom-right corner of the screen
+4. Configuration portal opens automatically
+
+**Automatic Portal Access**:
 - First boot (no WiFi configured)
 - Connection fails to saved network
-- You want to change settings
 
 **Portal Details**:
 - Network: `M5Paper-Weather`
 - Password: `configure`
 - URL: `http://192.168.4.1`
+
+**Note**: Automatic weather updates (every 10-60 minutes) do NOT show the 30-second config window - they immediately refresh and sleep. This saves battery. The config window only appears after manual reset button press.
 
 ### Location Settings
 
@@ -198,32 +208,47 @@ Choose between Fahrenheit (default) or Celsius via dropdown menu in configuratio
 ```
 PaperS3Weather/
 ├── src/
-│   ├── main.cpp           # Main application code
+│   ├── main.cpp           # Main application entry point
+│   ├── constants.h        # Configuration constants and defines
+│   ├── utils.h/cpp        # Helper functions (temp, time, weather)
+│   ├── weather_api.h/cpp  # Open-Meteo API communication
+│   ├── config.h/cpp       # WiFi setup and web portal
+│   ├── display.h/cpp      # Display rendering functions
 │   └── Icons.h            # Weather icon bitmap data
 ├── platformio.ini         # PlatformIO configuration
+├── CHANGELOG.md           # Version history
 ├── README.md              # This file
 └── LICENSE                # MIT License
 ```
 
-### Customizing Refresh Intervals
+### Customizing Refresh Intervals and Night Mode
 
-Edit `src/main.cpp`:
+**Via Web Interface (Recommended - v1.12+)**:
+
+1. Press the reset button on your M5Paper S3
+2. Within 30 seconds, tap the [CFG] button in bottom-right corner of display
+3. Connect to WiFi: `M5Paper-Weather` (password: `configure`)
+4. Navigate to: `http://192.168.4.1`
+5. Set custom refresh intervals:
+   - **Day Time**: 5-120 minutes (how often to update during the day)
+   - **Night Time**: 15-240 minutes (how often to update at night)
+6. Set custom night mode hours:
+   - **Start Hour**: 0-23 (when night mode begins, e.g., 22 = 10pm)
+   - **End Hour**: 0-23 (when night mode ends, e.g., 5 = 5am)
+7. Save and restart
+
+**Via Code** (for advanced users):
+
+Edit `src/constants.h`:
 
 ```cpp
 #define REFRESH_INTERVAL_DAY_MS 600000      // 10 minutes (default)
 #define REFRESH_INTERVAL_NIGHT_MS 3600000   // 60 minutes (default)
-```
-
-Convert minutes to milliseconds: `minutes × 60 × 1000`
-
-### Customizing Night Mode Hours
-
-Edit `src/main.cpp`:
-
-```cpp
 #define NIGHT_START_HOUR 22  // 10pm (default)
 #define NIGHT_END_HOUR 5     // 5am (default)
 ```
+
+These are fallback defaults. User preferences saved via web interface take precedence.
 
 ### Modifying Display Layout
 
