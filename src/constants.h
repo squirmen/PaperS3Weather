@@ -2,7 +2,7 @@
 #define CONSTANTS_H
 
 // Version
-#define VERSION "Version 1.12"
+#define VERSION "Version 1.12.1"
 
 // WiFi Configuration
 #define WIFI_TIMEOUT_MS 20000

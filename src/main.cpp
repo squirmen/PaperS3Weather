@@ -53,10 +53,19 @@ void setup() {
     M5.Display.begin();
     Serial.begin(115200);
 
+    // Small delay to ensure display is fully initialized after wake
+    delay(100);
+
     Serial.println("\n=================================");
     Serial.println("PaperS3Weather " + String(VERSION));
     Serial.println("Based on Bastelschlumpf design");
     Serial.println("=================================");
+
+    // Reinitialize canvas after M5.Display is ready
+    // This fixes the automatic wake display issue
+    canvas.setColorDepth(16);
+    canvas.createSprite(1, 1);  // Create minimal sprite to initialize
+    canvas.deleteSprite();       // Clean up
 
     // Configure display
     M5.Display.setRotation(1);
@@ -108,20 +117,24 @@ void setup() {
 
         if (!fetchSuccess) {
             Serial.println("All weather fetch attempts failed!");
+            M5.Display.startWrite();
             M5.Display.fillScreen(TFT_WHITE);
             M5.Display.setTextColor(TFT_BLACK);
             M5.Display.setCursor(20, 20);
             M5.Display.println("Failed to fetch weather");
             M5.Display.println("Will retry in 1 minute");
+            M5.Display.endWrite();
             M5.Display.display();
             // Retry sooner on failure
             lastRefreshTime = millis() - REFRESH_INTERVAL_DAY_MS + 60000;
         }
     } else {
+        M5.Display.startWrite();
         M5.Display.fillScreen(TFT_WHITE);
         M5.Display.setTextColor(TFT_BLACK);
         M5.Display.setCursor(20, 20);
         M5.Display.println("No WiFi - Touch to configure");
+        M5.Display.endWrite();
         M5.Display.display();
         lastRefreshTime = millis();
     }
