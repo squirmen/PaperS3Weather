@@ -146,11 +146,7 @@ void loop() {
 
             unsigned long startWait = millis();
             const unsigned long waitDuration = USER_INTERACTION_TIMEOUT_MS;
-
-            // Show countdown on screen
-            M5.Display.startWrite();
-            M5.Display.setTextSize(1);
-            M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
+            unsigned long lastSerialUpdate = 0;
 
             while (millis() - startWait < waitDuration) {
                 M5.update();  // Update touch state
@@ -165,6 +161,7 @@ void loop() {
                     if (touchX > (SCREEN_WIDTH - CFG_BUTTON_TOUCH_WIDTH) &&
                         touchY > (SCREEN_HEIGHT - CFG_BUTTON_TOUCH_HEIGHT)) {
                         Serial.println("\n*** CONFIG button pressed! ***");
+                        M5.Display.startWrite();
                         M5.Display.fillScreen(TFT_WHITE);
                         M5.Display.setTextSize(2);
                         M5.Display.setCursor(20, 20);
@@ -186,28 +183,16 @@ void loop() {
                     }
                 }
 
-                // Update countdown display every second
+                // Update serial countdown every second
                 unsigned long remaining = (waitDuration - (millis() - startWait)) / 1000;
-                if (remaining != ((waitDuration - (millis() - startWait - 1000)) / 1000)) {
-                    M5.Display.fillRect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 140, 25, TFT_WHITE);
-                    M5.Display.setCursor(SCREEN_WIDTH - 145, SCREEN_HEIGHT - 45);
-                    M5.Display.printf("Sleep in: %lu sec", remaining + 1);
-                    M5.Display.display();
+                if (millis() - lastSerialUpdate >= 1000) {
+                    Serial.printf("Waiting for config tap... %lu seconds remaining\n", remaining);
+                    lastSerialUpdate = millis();
                 }
 
                 delay(100);  // Small delay to reduce CPU usage
             }
 
-            // Clear countdown and restore [CFG] text
-            M5.Display.fillRect(SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 150, 50, TFT_WHITE);
-            M5.Display.setTextSize(1);
-            M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
-            M5.Display.setCursor(SCREEN_WIDTH - 50, SCREEN_HEIGHT - 20);
-            M5.Display.print("[CFG]");
-            M5.Display.display();
-            delay(500);  // Give e-ink time to fully refresh
-
-            M5.Display.endWrite();
             Serial.println("*** Wait period ended, entering sleep mode ***\n");
         } else {
             // Automatic wake from timer - skip interaction window
