@@ -69,8 +69,10 @@ void startConfigPortal() {
     WebServer server(80);
 
     server.on("/", HTTP_GET, [&server]() {
-        // Load current settings
+        // Load current settings including WiFi credentials
         preferences.begin("weather", true);
+        String currentSSID = preferences.getString("ssid", "");
+        String currentPassword = preferences.getString("password", "");
         String currentCity = preferences.getString("city", DEFAULT_CITY);
         String currentLat = preferences.getString("latitude", "");
         String currentLon = preferences.getString("longitude", "");
@@ -150,10 +152,13 @@ void startConfigPortal() {
         html += "<div class='section'>";
         html += "<h3>WiFi Connection</h3>";
         html += "<label>Network Name (SSID):</label>";
-        html += "<input name='ssid' required maxlength='32' placeholder='Your WiFi network'><br>";
+        html += "<input name='ssid' value='" + currentSSID + "' required maxlength='32' placeholder='Your WiFi network'><br>";
         html += "<label>Password:</label>";
-        html += "<input type='password' name='password' maxlength='64' placeholder='WiFi password'>";
+        html += "<input type='password' name='password' value='" + currentPassword + "' maxlength='64' placeholder='WiFi password'>";
         html += "<div class='note'>Note: Must be 2.4GHz WiFi (ESP32 doesn't support 5GHz)</div>";
+        if (currentSSID.length() > 0) {
+            html += "<div class='help'>Currently saved: " + currentSSID + "</div>";
+        }
         html += "</div>";
 
         // Location Section

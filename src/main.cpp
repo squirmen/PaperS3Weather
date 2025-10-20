@@ -210,6 +210,9 @@ void loop() {
         } else {
             // Automatic wake from timer - skip interaction window
             Serial.println("\n*** Automatic wake from timer - skipping interaction window ***");
+            // Give e-ink display time to complete refresh before sleeping
+            Serial.println("*** Waiting 3 seconds for display to refresh ***");
+            delay(3000);
         }
 
         hasWaited = true;
