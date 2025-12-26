@@ -558,8 +558,15 @@ void drawM5PaperInfo(int x, int y, int dx, int dy) {
   canvas.drawString(String((int)displayHumid) + "%", x + 150, y + 210);
 }
 
-void displayWeather() {
+void displayWeather(bool partialUpdate) {
   M5.Display.startWrite();
+
+  // Set update mode based on partialUpdate flag
+  if (partialUpdate) {
+    M5.Display.setEpdMode(epd_mode_t::epd_fast);
+  } else {
+    M5.Display.setEpdMode(epd_mode_t::epd_quality);
+  }
 
   if (!canvas.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT)) {
     Serial.println("ERROR: Failed to allocate canvas memory!");

@@ -70,4 +70,5 @@ String urlEncode(String str);
 void drawDegreeSymbol(int x, int y, int radius);
 int getRSSIQuality(int rssi);
 
+void dual_println(int reason, String str);
 #endif // UTILS_H

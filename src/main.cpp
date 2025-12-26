@@ -52,8 +52,10 @@ void enterDeepSleep(unsigned long sleepTimeMs) {
 }
 
 void setup() {
-  M5.begin();
-  M5.Display.begin();
+  auto cfg = M5.config();
+  cfg.clear_display = false; // Don't clear display on boot
+  M5.begin(cfg);
+  // M5.Display.begin(); // Not needed with M5Unified, handled by M5.begin
   Serial.begin(115200);
 
   // Small delay to ensure display is fully initialized after wake
@@ -73,25 +75,36 @@ void setup() {
   // Configure display
   M5.Display.setRotation(1);
   M5.Display.startWrite();
-  M5.Display.fillScreen(TFT_WHITE);
-  M5.Display.setTextColor(TFT_BLACK);
-  M5.Display.setTextSize(2);
-  M5.Display.setCursor(20, 20);
-  M5.Display.println("PaperS3Weather " + String(VERSION));
-  M5.Display.setCursor(20, 50);
-  M5.Display.println("Initializing...");
-  M5.Display.endWrite();
-  M5.Display.display();
 
-  Serial.println("Splash screen displayed");
-  delay(2000);
+  // Check wakeup reason
+  esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+  if (wakeup_reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+    // Only clear screen and show splash on manual power-on/reset
+    M5.Display.fillScreen(TFT_WHITE);
+    M5.Display.setTextColor(TFT_BLACK);
+    M5.Display.setTextSize(2);
+    M5.Display.setCursor(20, 20);
+    M5.Display.println("PaperS3Weather " + String(VERSION));
+    M5.Display.setCursor(20, 50);
+    Serial.println("Splash screen displayed (Power On / Reset)");
+
+    // Add delay only when showing splash screen
+    M5.Display.endWrite();
+    M5.Display.display();
+  } else {
+    // Just configure text properties for potential error messages later
+    M5.Display.setTextColor(TFT_BLACK);
+    M5.Display.setTextSize(2);
+    M5.Display.endWrite();
+    Serial.println("Skipping splash screen (Wake from Sleep)");
+  }
 
   setupWiFi();
 
   // Configure time via NTP if connected
   if (WiFi.status() == WL_CONNECTED) {
     configTime(TIMEZONE_OFFSET_HOURS * 3600, 0, NTP_SERVER_1, NTP_SERVER_2);
-    Serial.println("Time configured via NTP");
+    dual_println(wakeup_reason, "Time configured via NTP");
   }
 
   // Load preferences and fetch weather
@@ -113,7 +126,7 @@ void setup() {
       }
 
       if (fetchWeatherData(latitude, longitude)) {
-        Serial.println("Open-Meteo fetch successful!");
+        dual_println(wakeup_reason, "Open-Meteo fetch successful!");
         fetchSuccess = true;
         break;
       }
@@ -121,22 +134,32 @@ void setup() {
 
     // 2. Fetch Current Conditions from MQTT (if configured)
     if (mqttServer.length() > 0) {
-      Serial.println("Attempting to fetch MQTT data...");
+      dual_println(wakeup_reason, "Attempting to fetch MQTT data...");
       if (fetchMQTTWeatherData(mqttServer, mqttPort)) {
         // MQTT data has overwritten the current conditions in currentWeather
         // Forecast data from Open-Meteo is preserved
-        Serial.println("MQTT weather data merged.");
+        dual_println(wakeup_reason, "MQTT weather data merged.");
       } else {
-        Serial.println(
-            "MQTT fetch failed (using Open-Meteo current conditions).");
+        dual_println(wakeup_reason,
+                     "MQTT fetch failed using Open-Meteo current conditions");
       }
     }
 
     if (fetchSuccess) {
-      displayWeather();
+      // Use partial update if we woke from timer, full update otherwise
+      esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+      bool partialUpdate = (wakeup_reason == ESP_SLEEP_WAKEUP_TIMER);
+
+      if (partialUpdate) {
+        Serial.println("Performing PARTIAL display update");
+      } else {
+        dual_println(wakeup_reason, "Performing FULL display update");
+      }
+
+      displayWeather(partialUpdate);
       lastRefreshTime = millis();
     } else {
-      Serial.println("All weather fetch attempts failed!");
+      dual_println(wakeup_reason, "All weather fetch attempts failed!");
       M5.Display.startWrite();
       M5.Display.fillScreen(TFT_WHITE);
       M5.Display.setTextColor(TFT_BLACK);
