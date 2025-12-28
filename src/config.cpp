@@ -12,9 +12,11 @@ extern bool nightModeSleep;
 extern String cityName;
 
 void setupWiFi() {
+  ensureDefaultsSaved();
+
   preferences.begin("weather", false);
-  String ssid = preferences.getString("ssid", "");
-  String password = preferences.getString("password", "");
+  String ssid = preferences.getString("ssid", DEFAULT_WIFI_SSID);
+  String password = preferences.getString("password", DEFAULT_WIFI_PASSWORD);
   preferences.end();
 
   if (ssid.length() > 0) {
@@ -73,19 +75,19 @@ void startConfigPortal() {
   server.on("/", HTTP_GET, [&server]() {
     // Load current settings including WiFi credentials
     preferences.begin("weather", true);
-    String currentSSID = preferences.getString("ssid", "");
-    String currentPassword = preferences.getString("password", "");
+    String currentSSID = preferences.getString("ssid", DEFAULT_WIFI_SSID);
+    String currentPassword = preferences.getString("password", DEFAULT_WIFI_PASSWORD);
     String currentCity = preferences.getString("city", DEFAULT_CITY);
     String currentLat = preferences.getString("latitude", "");
     String currentLon = preferences.getString("longitude", "");
-    String currentUnit = preferences.getString("tempunit", "F");
-    bool currentNightMode = preferences.getBool("nightmode", true);
-    int currentDayInterval = preferences.getInt("day_interval", 10);
-    int currentNightInterval = preferences.getInt("night_interval", 60);
-    int currentNightStart = preferences.getInt("night_start", 22);
-    int currentNightEnd = preferences.getInt("night_end", 5);
-    String currentMqttServer = preferences.getString("mqtt_server", "");
-    int currentMqttPort = preferences.getInt("mqtt_port", 1883);
+    String currentUnit = preferences.getString("tempunit", DEFAULT_TEMP_UNIT);
+    bool currentNightMode = preferences.getBool("nightmode", DEFAULT_NIGHT_MODE);
+    int currentDayInterval = preferences.getInt("day_interval", DEFAULT_DAY_INTERVAL);
+    int currentNightInterval = preferences.getInt("night_interval", DEFAULT_NIGHT_INTERVAL);
+    int currentNightStart = preferences.getInt("night_start", NIGHT_START_HOUR);
+    int currentNightEnd = preferences.getInt("night_end", NIGHT_END_HOUR);
+    String currentMqttServer = preferences.getString("mqtt_server", DEFAULT_MQTT_SERVER);
+    int currentMqttPort = preferences.getInt("mqtt_port", DEFAULT_MQTT_PORT);
     preferences.end();
 
     String html = "<!DOCTYPE html><html><head>";
@@ -398,11 +400,11 @@ void loadPreferences(float &latitude, float &longitude, String &cityName,
   String latStr = preferences.getString("latitude", String(COORD_NOT_SET));
   String lonStr = preferences.getString("longitude", String(COORD_NOT_SET));
   cityName = preferences.getString("city", DEFAULT_CITY);
-  mqttServer = preferences.getString("mqtt_server", "");
-  mqttPort = preferences.getInt("mqtt_port", 1883);
-  String tempUnit = preferences.getString("tempunit", "F");
+  mqttServer = preferences.getString("mqtt_server", DEFAULT_MQTT_SERVER);
+  mqttPort = preferences.getInt("mqtt_port", DEFAULT_MQTT_PORT);
+  String tempUnit = preferences.getString("tempunit", DEFAULT_TEMP_UNIT);
   useCelsius = (tempUnit == "C");
-  nightModeSleep = preferences.getBool("nightmode", true);
+  nightModeSleep = preferences.getBool("nightmode", DEFAULT_NIGHT_MODE);
   preferences.end();
 
   latitude = latStr.toFloat();
@@ -428,4 +430,50 @@ void loadPreferences(float &latitude, float &longitude, String &cityName,
                 cityName.c_str());
   Serial.printf("Temperature unit: %s\n",
                 useCelsius ? "Celsius" : "Fahrenheit");
+}
+
+void ensureDefaultsSaved() {
+  preferences.begin("weather", false);
+
+  // Check if we need to write defaults (checking ssid as a proxy for all settings)
+  // We use isKey() if available, or just check if the string is empty when we try to fetch it without default
+  // But getString gives a default if not found.
+  // The goal is to WRITE the defaults to NVS if they aren't there.
+  
+  // Note: preferences.isKey() is available in newer ESP32 Arduino cores.
+  // If not sure about version, we can try to get a string with a null default?
+  // Actually, checking if "ssid" exists is enough.
+  
+  if (!preferences.isKey("ssid")) {
+    Serial.println("First boot or no config detected. Saving defaults...");
+    
+    // Save WiFi defaults
+    if (String(DEFAULT_WIFI_SSID).length() > 0) {
+        preferences.putString("ssid", DEFAULT_WIFI_SSID);
+        preferences.putString("password", DEFAULT_WIFI_PASSWORD);
+    }
+    
+    // Save Application Defaults
+    preferences.putString("city", DEFAULT_CITY);
+    preferences.putString("tempunit", DEFAULT_TEMP_UNIT);
+    preferences.putBool("nightmode", DEFAULT_NIGHT_MODE);
+    preferences.putInt("day_interval", DEFAULT_DAY_INTERVAL);
+    preferences.putInt("night_interval", DEFAULT_NIGHT_INTERVAL);
+    preferences.putInt("night_start", NIGHT_START_HOUR);
+    preferences.putInt("night_end", NIGHT_END_HOUR);
+    
+    // Save MQTT Defaults
+    preferences.putString("mqtt_server", DEFAULT_MQTT_SERVER);
+    preferences.putInt("mqtt_port", DEFAULT_MQTT_PORT);
+    
+    // Save Location Defaults
+    // Check if defaults are actual coordinates or special values
+    // In constants.h, defaults are now concrete values (Cambridge)
+    preferences.putString("latitude", String(DEFAULT_LATITUDE, 4));
+    preferences.putString("longitude", String(DEFAULT_LONGITUDE, 4));
+    
+    Serial.println("Defaults saved.");
+  }
+  
+  preferences.end();
 }
