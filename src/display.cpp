@@ -52,6 +52,47 @@ void drawRSSI(int x, int y, int rssi) {
   drawArc(x + 12, y, 2, 225, 315);
 }
 
+
+void drawLowBatteryWarning() {
+  M5.Display.startWrite();
+  M5.Display.setEpdMode(epd_mode_t::epd_quality);
+
+  if (!canvas.createSprite(SCREEN_WIDTH, SCREEN_HEIGHT)) {
+    Serial.println("ERROR: Failed to allocate canvas memory!");
+    M5.Display.endWrite();
+    return;
+  }
+
+  canvas.fillSprite(TFT_WHITE);
+  canvas.setTextColor(TFT_BLACK, TFT_WHITE);
+  canvas.setTextDatum(MC_DATUM);
+
+  // Draw Warning Icon (Exclamation mark triangle or similar) or just big text
+  // We don't have a specific large warning icon, so we'll use text for now
+  // or maybe draw a large empty battery.
+
+  canvas.setTextSize(4);
+  canvas.drawString("LOW BATTERY", SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 - 50);
+
+  canvas.setTextSize(3);
+  canvas.drawString("Please Connect Charger", SCREEN_WIDTH / 2,
+                    SCREEN_HEIGHT / 2 + 20);
+
+  int batteryPercent = M5.Power.getBatteryLevel();
+  if (batteryPercent < 0) batteryPercent = 0;
+  if (batteryPercent > 100) batteryPercent = 100;
+
+  canvas.setTextSize(2);
+  canvas.drawString("Battery: " + String(batteryPercent) + "%", SCREEN_WIDTH / 2,
+                    SCREEN_HEIGHT / 2 + 70);
+
+  canvas.pushSprite(0, 0);
+  canvas.deleteSprite();
+
+  M5.Display.endWrite();
+  M5.Display.display();
+}
+
 void drawBattery(int x, int y, int batteryPercent) {
   canvas.drawRect(x, y, BATTERY_WIDTH, BATTERY_HEIGHT, TFT_BLACK);
   canvas.drawRect(x + BATTERY_WIDTH, y + BATTERY_TIP_OFFSET, BATTERY_TIP_WIDTH,
@@ -579,6 +620,21 @@ void displayWeather(bool partialUpdate) {
   canvas.setTextDatum(TL_DATUM);
   canvas.setTextSize(2);
 
+  // Check battery level first
+  int batteryPercent = M5.Power.getBatteryLevel();
+  if (batteryPercent < 0)
+    batteryPercent = 0;
+  if (batteryPercent > 100)
+    batteryPercent = 100;
+
+  // If battery is critically low (below 3%), show warning and exit
+  if (batteryPercent < LOW_BATTERY_THRESHOLD) {
+    canvas.deleteSprite(); // Clean up sprite created above
+    M5.Display.endWrite(); // End write transaction started above
+    drawLowBatteryWarning();
+    return;
+  }
+
   // Draw header
   canvas.setTextSize(2);
   canvas.drawString(VERSION, 20, 10);
@@ -595,7 +651,7 @@ void displayWeather(bool partialUpdate) {
   drawRSSI(SCREEN_WIDTH - 147, 23, rssi);
 
   // Draw battery level
-  int batteryPercent = M5.Power.getBatteryLevel();
+  batteryPercent = M5.Power.getBatteryLevel();
   if (batteryPercent < 0)
     batteryPercent = 0;
   if (batteryPercent > 100)

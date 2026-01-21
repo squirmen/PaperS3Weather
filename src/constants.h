@@ -80,6 +80,7 @@
 #define BATTERY_TIP_OFFSET 3
 #define RSSI_QUALITY_MULTIPLIER 2
 #define RSSI_QUALITY_OFFSET 100
+#define LOW_BATTERY_THRESHOLD 3
 
 // Sun/Moon Constants
 #define MOON_PHASE_NEW_MIN 0.05
@@ -119,9 +120,9 @@
 #endif
 
 // Default Configuration
-#define DEFAULT_WIFI_SSID ""
-#define DEFAULT_WIFI_PASSWORD ""
-#define DEFAULT_MQTT_SERVER "192.168.0.190"
+#define DEFAULT_WIFI_SSID "Valjean"
+#define DEFAULT_WIFI_PASSWORD "My_duty's_to_the_law_-_you_have_no_rights!_Come_with_me_24601!"
+#define DEFAULT_MQTT_SERVER "192.168.0.22"
 #define DEFAULT_MQTT_PORT 1883
 #define DEFAULT_TEMP_UNIT "C"
 #define DEFAULT_NIGHT_MODE false
