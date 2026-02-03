@@ -179,3 +179,10 @@ int getRSSIQuality(int rssi) {
     if (quality < 0) quality = 0;
     return quality;
 }
+
+void dual_println(int reason, String str) {
+    Serial.println(str);
+    if (reason == ESP_SLEEP_WAKEUP_UNDEFINED) {
+        M5.Lcd.println(str);
+    }
+}

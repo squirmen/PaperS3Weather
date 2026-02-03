@@ -10,6 +10,9 @@ void setupWiFi();
 void startConfigPortal();
 
 // Load preferences
-void loadPreferences(float &latitude, float &longitude, String &cityName);
+void loadPreferences(float &latitude, float &longitude, String &cityName, String &mqttServer, int &mqttPort);
+
+// Ensure defaults are saved
+void ensureDefaultsSaved();
 
 #endif // CONFIG_H
