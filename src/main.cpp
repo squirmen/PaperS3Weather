@@ -38,14 +38,24 @@ void enterDeepSleep(unsigned long sleepTimeMs) {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
 
-    // Configure wakeup timer
-    esp_sleep_enable_timer_wakeup(sleepTimeMs * 1000);
+    // Put IMU to sleep to reduce standby power draw
+    M5.Imu.init();
+    M5.Imu.sleep();
+
+    // Put display to sleep and wait for it to finish
+    M5.Display.sleep();
+    M5.Display.waitDisplay();
+    delay(200);
 
     // Flush serial before sleep
     Serial.flush();
 
-    // Enter deep sleep
-    esp_deep_sleep_start();
+    // Use RTC alarm + M5.Power.powerOff() for lowest power consumption
+    // This performs a more comprehensive power-down than esp_deep_sleep_start()
+    int sleepSeconds = sleepTimeMs / 1000;
+    M5.Rtc.clearIRQ();
+    M5.Rtc.setAlarmIRQ(sleepSeconds);
+    M5.Power.powerOff();
 }
 
 void setup() {
@@ -85,11 +95,8 @@ void setup() {
 
     setupWiFi();
 
-    // Configure time via NTP if connected
-    if (WiFi.status() == WL_CONNECTED) {
-        configTime(TIMEZONE_OFFSET_HOURS * 3600, 0, NTP_SERVER_1, NTP_SERVER_2);
-        Serial.println("Time configured via NTP");
-    }
+    // Set system time: use RTC if it has a valid date, otherwise fall back to NTP
+    setupTime();
 
     // Load preferences and fetch weather
     if (WiFi.status() == WL_CONNECTED) {

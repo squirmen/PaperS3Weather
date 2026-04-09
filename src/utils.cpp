@@ -2,9 +2,44 @@
 #include "constants.h"
 #include "Icons.h"
 #include <Preferences.h>
+#include <WiFi.h>
+#include <sys/time.h>
 
 extern Preferences preferences;
 extern bool nightModeSleep;
+
+void setupTime() {
+    // Check if RTC already has a valid date (year > 2023 means it was set previously)
+    auto dt = M5.Rtc.getDateTime();
+    if (dt.date.year > 2023) {
+        // Use RTC time directly - avoids NTP call, saving boot time and power
+        struct tm tm = {};
+        tm.tm_sec = dt.time.seconds;
+        tm.tm_min = dt.time.minutes;
+        tm.tm_hour = dt.time.hours;
+        tm.tm_mday = dt.date.date;
+        tm.tm_mon = dt.date.month - 1;
+        tm.tm_year = dt.date.year - 1900;
+        time_t t = mktime(&tm);
+        struct timeval now = { .tv_sec = t };
+        settimeofday(&now, NULL);
+        Serial.printf("Time set from RTC: %04d-%02d-%02d %02d:%02d:%02d\n",
+                      dt.date.year, dt.date.month, dt.date.date,
+                      dt.time.hours, dt.time.minutes, dt.time.seconds);
+    } else if (WiFi.status() == WL_CONNECTED) {
+        // RTC not set yet - use NTP and save to RTC for future boots
+        configTime(TIMEZONE_OFFSET_HOURS * 3600, 0, NTP_SERVER_1, NTP_SERVER_2);
+        struct tm tm;
+        if (getLocalTime(&tm)) {
+            M5.Rtc.setDateTime(tm);
+            Serial.println("Time configured via NTP and saved to RTC");
+        } else {
+            Serial.println("NTP time sync failed");
+        }
+    } else {
+        Serial.println("No valid RTC time and no WiFi - time unavailable");
+    }
+}
 
 float convertTemp(float temp) {
     return temp;

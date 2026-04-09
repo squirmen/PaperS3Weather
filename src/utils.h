@@ -53,6 +53,7 @@ String getWeatherConditionText(int weatherCode);
 bool isDaytime(int hour);
 
 // Time and astronomical calculations
+void setupTime();
 float getMoonPhase();
 bool isNightTime();
 unsigned long getRefreshInterval();
