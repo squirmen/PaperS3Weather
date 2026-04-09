@@ -2,7 +2,7 @@ PaperS3Weather - M5Burner Submission Info
 ==========================================
 
 App Name: PaperS3Weather
-Version: 1.1
+Version: 1.13
 Device: M5Paper S3
 Category: Weather / Utilities
 
@@ -36,11 +36,11 @@ License: MIT
 
 Files for M5Burner:
 -------------------
-- PaperS3Weather_v1.1.bin (main firmware)
+- PaperS3Weather_v1.13.bin (main firmware)
 - bootloader.bin (ESP32-S3 bootloader)
 - partitions.bin (partition table)
 
 Flash Addresses:
 - bootloader.bin @ 0x0000
 - partitions.bin @ 0x8000
-- PaperS3Weather_v1.1.bin @ 0x10000
+- PaperS3Weather_v1.13.bin @ 0x10000

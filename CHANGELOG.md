@@ -1,5 +1,20 @@
 # Changelog - M5PaperS3 Weather Dashboard
 
+## Version 1.13 - Battery Life Improvements (April 2025)
+
+### Power Optimization
+- **Improved deep sleep power consumption** - IMU now put to sleep before power-off, display properly shut down with `sleep()` and `waitDisplay()` calls
+- **RTC alarm-based power-off** - Switched from `esp_deep_sleep_start()` to `M5.Power.powerOff()` with RTC alarm for significantly lower standby current
+- **RTC-based time on boot** - System time is now set from the RTC if it holds a valid date, skipping the NTP call entirely on most wakes. NTP is only used on first boot (or after battery reset) and the result is saved to RTC for subsequent wakes
+- **Faster boot cycle** - Eliminating NTP on timer wakes reduces WiFi-on time and overall wake duration
+
+### Technical Details
+- Deep sleep now calls `M5.Imu.sleep()`, `M5.Display.sleep()`, `M5.Display.waitDisplay()`, `M5.Rtc.setAlarmIRQ()`, and `M5.Power.powerOff()` for comprehensive shutdown
+- `setupTime()` function checks RTC year > 2023 to determine if RTC has been previously set
+- First boot still uses NTP and writes the result to RTC for future use
+
+---
+
 ## Version 1.12 - Modular Refactor & Smart Wake (January 2025)
 
 ### 🏗️ Architecture Overhaul
