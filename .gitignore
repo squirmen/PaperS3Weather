@@ -16,10 +16,14 @@
 
 # IDE files
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 .DS_Store
+
+# Claude Code
+.claude/
 
 # OS files
 Thumbs.db
